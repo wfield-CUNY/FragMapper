@@ -9,10 +9,9 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "html-to-image": "^1.9.0",
-    "leaflet": "^1.7.1",
-    "leaflet-vector-tile-layer": "^0.8.0",
-    "parcel": "^1.12.3"
+    "ol": "^6.9.0",
+    "parcel": "1.12.3",
+    "three": "^0.135.0"
   },
   "dependencies": {}
 }
