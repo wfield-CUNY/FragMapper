@@ -17,9 +17,6 @@ import {
     fromLonLat
 } from 'ol/proj';
 
-// lookup for selection objects
-let selection = {};
-
 const country = new Style({
     stroke: new Stroke({
         color: 'gray',
@@ -30,8 +27,8 @@ const country = new Style({
     }),
 });
 
-const tileUrl = 'https://www.urbanresearchmaps.org/NJ-Redistrict-API/v1/mvt/cong_current_all/{z}/{x}/{y}?geom_column=geom&columns=geoid'
-
+//const tileUrl = 'https://www.urbanresearchmaps.org/NJ-Redistrict-API/v1/mvt/cong_current_all/{z}/{x}/{y}?geom_column=geom&columns=geoid'
+const tileUrl = 'https://api.mapbox.com/v4/mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2,cunycur.dafp1f9f,cunycur.5a5xu1x4,cunycur.4ku9480m,cunycur.22eyn04s/{z}/{x}/{y}.vector.pbf?sku=101Po7LuGwr0M&access_token=pk.eyJ1IjoiY3VueWN1ciIsImEiOiJfQmNSMF9NIn0.uRgbcFeJbw2xyTUZY8gYeA'
 const vtLayer = new VectorTileLayer({
     declutter: true,
     source: new VectorTileSource({
@@ -65,126 +62,96 @@ const selectionLayer = new VectorTileLayer({
     style: country
 });
 
+////////////////////
+/// THREE.JS
+////////////////////
+let camera, scene, renderer, mesh, material, drawingCanvas, canvasTex;
 
-
-let camera, scene, renderer, mesh, material;
-const drawStartPos = new THREE.Vector2();
-
-setTimeout(()=>{
+setTimeout(() => {
     init();
     setupCanvasDrawing();
     animate();
-    
-}, 1000)
+
+}, 1000);
 
 function init() {
 
-    camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 2000);
+    const width = 512 //window.innerWidth;
+    const height = 512 //window.innerHeight;
+    camera = new THREE.OrthographicCamera(width / -2, width / 2, height / 2, height / -2, 1, 1000);
     camera.position.z = 500;
-
     scene = new THREE.Scene();
 
-    material = new THREE.MeshBasicMaterial();
+    drawingCanvas = document.querySelector('#map > div > div.ol-unselectable.ol-layers > div > canvas');
+    canvasTex = new THREE.CanvasTexture(drawingCanvas);
+    // material = new THREE.MeshBasicMaterial();
 
-    mesh = new THREE.Mesh(new THREE.BoxGeometry(200, 200, 200), material);
+
+
+    material = new THREE.ShaderMaterial({
+        uniforms: {
+            map: {
+                value: canvasTex
+            }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+            }`,
+        fragmentShader: `
+
+            uniform sampler2D map;
+            varying vec2 vUv;
+
+            void main() {
+
+            vec2 sampleUV = vUv;
+            vec4 color = texture2D( map, sampleUV, 0.0 );
+
+            gl_FragColor = vec4( color.x,color.y,color.z, 1.0 );
+
+            }
+
+        `,
+        depthTest: false
+    })
+
+    mesh = new THREE.Mesh(new THREE.PlaneGeometry(512, 512), material);
     scene.add(mesh);
 
     renderer = new THREE.WebGLRenderer({
         antialias: true
     });
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    window.addEventListener('resize', onWindowResize);
+    renderer.setSize(width, height);
+    document.getElementById('three-holder').appendChild(renderer.domElement);
 
 }
-
-// Sets up the drawing canvas and adds it as the material map
 
 function setupCanvasDrawing() {
 
-    // get canvas and context
-
-    const drawingCanvas = document.querySelector('#map > div > div.ol-unselectable.ol-layers > div > canvas');
-    
-    const drawingContext = drawingCanvas.getContext('2d');
-
-    // draw white background
-
- 
-
-    // set canvas as material.map (this could be done to any map, bump, displacement etc.)
-
-    material.map = new THREE.CanvasTexture(drawingCanvas);
-
-    // set the variable to keep track of when to draw
-
-    let paint = false;
-
-    // add canvas event listeners
+    material.map = canvasTex;
     drawingCanvas.addEventListener('pointerdown', function (e) {
-
-        paint = true;
-        drawStartPos.set(e.offsetX, e.offsetY);
-
+        material.map.needsUpdate = true;
     });
 
     drawingCanvas.addEventListener('pointermove', function (e) {
-
-        if (paint) draw(drawingContext, e.offsetX, e.offsetY);
-
+        material.map.needsUpdate = true;
     });
 
     drawingCanvas.addEventListener('wheel', function (e) {
-        console.log('scroll')
-        draw(drawingContext, e.offsetX, e.offsetY);
-
-    });
-
-    drawingCanvas.addEventListener('pointerup', function () {
-
-        paint = false;
-
-    });
-
-    drawingCanvas.addEventListener('pointerleave', function () {
-
-        paint = false;
-
+        material.map.needsUpdate = true;
     });
 
 }
 
-function draw(drawContext, x, y) {
 
-    drawContext.moveTo(drawStartPos.x, drawStartPos.y);
-    drawContext.strokeStyle = '#000000';
-    drawContext.lineTo(x, y);
-    drawContext.stroke();
-    // reset drawing start position to current position.
-    drawStartPos.set(x, y);
-    // need to flag the map as needing updating.
-    material.map.needsUpdate = true;
-
-}
-
-function onWindowResize() {
-
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-
-    renderer.setSize(window.innerWidth, window.innerHeight);
-
-}
 
 function animate() {
 
     requestAnimationFrame(animate);
-
-    //mesh.rotation.x += 0.01;
-   // mesh.rotation.y += 0.01;
-
     renderer.render(scene, camera);
 
 }

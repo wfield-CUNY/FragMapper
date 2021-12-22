@@ -11,7 +11,8 @@
   "devDependencies": {
     "ol": "^6.9.0",
     "parcel": "1.12.3",
-    "three": "^0.135.0"
+    "three": "^0.135.0",
+    "underscore": "^1.13.2"
   },
   "dependencies": {}
 }
