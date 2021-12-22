@@ -108,9 +108,13 @@ function init() {
             void main() {
 
             vec2 sampleUV = vUv;
+            //float r = 
+            float offset = .005;
             vec4 color = texture2D( map, sampleUV, 0.0 );
-
-            gl_FragColor = vec4( color.x,color.y,color.z, 1.0 );
+            float Rcolor = texture2D( map, sampleUV, 0.0 ).r;
+            float Gcolor = texture2D( map, sampleUV+vec2(offset), 0.0 ).b;
+            float Bcolor = texture2D( map, sampleUV-vec2(offset), 0.0 ).g;
+            gl_FragColor = vec4( Rcolor,Gcolor,Bcolor, 1.0 );
 
             }
 
